@@ -2,38 +2,41 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 )
 
 func main() {
-	var g Grid
+	rand.Seed(time.Now().UnixNano())
 
-	// Create and place two firetrucks
-	trucks := []Firetruck{
+	g := NewGrid()
+
+	for i := 0; i < 3; i++ {
+		g.IgniteFire()
+	}
+
+	trucks := []*Firetruck{
 		{X: 5, Y: 5, ID: 1},
 		{X: 15, Y: 10, ID: 2},
 	}
-
-	for i := range trucks {
-		trucks[i].Place(&g)
+	for _, t := range trucks {
+		t.Place(g)
 	}
 
-	g.IgniteFire()
+	fmt.Println("Initial grid:")
+	g.Print()
 
-	for step := 0; step < 20; step++ {
+	for step := 0; step < 10; step++ {
 		fmt.Printf("Step %d\n", step)
 
 		g.SpreadFire()
 
-		for i := range trucks {
-			trucks[i].Extinguish(&g)
-			trucks[i].Move(&g)
-			trucks[i].Extinguish(&g)
+		for _, t := range trucks {
+			t.Move(g)
+			t.Extinguish(g)
 		}
 
-		// Print grid state
 		g.Print()
-
 		time.Sleep(500 * time.Millisecond)
 	}
 }

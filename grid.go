@@ -19,31 +19,38 @@ const (
 type Grid struct {
 	Cells     [GridSize][GridSize]Cell
 	Intensity [GridSize][GridSize]int
+	Water     int
 }
 
-// Ignite a random fire
+// Initialize the grid with water supply
+func NewGrid() *Grid {
+	g := &Grid{Water: 100}
+	return g
+}
+
 func (g *Grid) IgniteFire() {
 	x := rand.Intn(GridSize)
 	y := rand.Intn(GridSize)
-	if g.Cells[y][x] == Fire {
-		g.Intensity[y][x]++ // intensify existing fire
-	} else {
-		g.Cells[y][x] = Fire
-		g.Intensity[y][x] = 1
-	}
-
+	g.Cells[y][x] = Fire
+	g.Intensity[y][x] = 1
 }
 
-// spread fire to neighboring cells
+// Spread fires and increase intensity of existing ones
 func (g *Grid) SpreadFire() {
 	var newFire [][2]int
 	for y := 0; y < GridSize; y++ {
 		for x := 0; x < GridSize; x++ {
 			if g.Cells[y][x] == Fire {
 
-				g.Intensity[y][x]++
+				if rand.Float64() < 0.2 {
+					g.Intensity[y][x]++
+					if g.Intensity[y][x] > 5 {
+						g.Intensity[y][x] = 5
+					}
+				}
 
-				spreadChance := 0.1 + 0.02*float64(g.Intensity[y][x])
+				// Slow spread: 5% base + 1% per intensity level
+				spreadChance := 0.05 + 0.01*float64(g.Intensity[y][x])
 				if rand.Float64() < spreadChance {
 					dx := rand.Intn(3) - 1
 					dy := rand.Intn(3) - 1
@@ -61,7 +68,23 @@ func (g *Grid) SpreadFire() {
 	}
 }
 
-// Print the grid
+// Request water from shared tank
+func (g *Grid) RequestWater(amount int) bool {
+	if g.Water >= amount {
+		g.Water -= amount
+		fmt.Printf(" Water requested: %d used, %d remaining.\n", amount, g.Water)
+		return true
+	}
+	fmt.Println(" Not enough water! Truck must wait for refill.")
+	return false
+}
+
+// Refill shared water tank (for testing)
+func (g *Grid) RefillWater() {
+	g.Water = 100
+	fmt.Println(" Water tank refilled to 100.")
+}
+
 func (g *Grid) Print() {
 	for y := 0; y < GridSize; y++ {
 		for x := 0; x < GridSize; x++ {
@@ -69,11 +92,7 @@ func (g *Grid) Print() {
 			case Empty:
 				fmt.Print(".")
 			case Fire:
-				level := g.Intensity[y][x]
-				if level > 9 {
-					level = 9
-				}
-				fmt.Printf("%d", level)
+				fmt.Print(g.Intensity[y][x])
 			case Extinguished:
 				fmt.Print("E")
 			case Truck:
