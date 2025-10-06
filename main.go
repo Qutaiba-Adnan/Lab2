@@ -18,18 +18,15 @@ func main() {
 		trucks[i].Place(&g)
 	}
 
-	// Ignite an initial fire
 	g.IgniteFire()
 
-	// Run simulation for 20 steps
 	for step := 0; step < 20; step++ {
 		fmt.Printf("Step %d\n", step)
 
-		// Spread fires
 		g.SpreadFire()
 
-		// Each truck moves and tries to extinguish fires
 		for i := range trucks {
+			trucks[i].Extinguish(&g)
 			trucks[i].Move(&g)
 			trucks[i].Extinguish(&g)
 		}
@@ -37,7 +34,6 @@ func main() {
 		// Print grid state
 		g.Print()
 
-		// Wait a bit between steps
 		time.Sleep(500 * time.Millisecond)
 	}
 }

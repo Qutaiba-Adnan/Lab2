@@ -1,7 +1,7 @@
 package main
 
 import (
-	"math/rand"
+	"math"
 )
 
 type Firetruck struct {
@@ -14,36 +14,56 @@ func (t *Firetruck) Place(g *Grid) {
 	g.Cells[t.Y][t.X] = Truck
 }
 
-// MOve randomly (N,S,E,W)
+// Find the closest fire using Manhattan distance
+func (t *Firetruck) findClosestFire(g *Grid) (int, int, bool) {
+	minDist := math.MaxFloat64
+	targetX, targetY := -1, -1
+	for y := 0; y < GridSize; y++ {
+		for x := 0; x < GridSize; x++ {
+			if g.Cells[y][x] == Fire {
+				dist := math.Abs(float64(t.X-x)) + math.Abs(float64(t.Y-y))
+				if dist < minDist {
+					minDist = dist
+					targetX, targetY = x, y
+				}
+			}
+		}
+	}
+	if targetX == -1 {
+		return 0, 0, false
+	}
+	return targetX, targetY, true
+}
+
+// Move one step toward the closest fire
 func (t *Firetruck) Move(g *Grid) {
 	g.Cells[t.Y][t.X] = Empty // clear old position
 
-	dx, dy := 0, 0
-	switch rand.Intn(4) {
-	case 0:
-		dx = -1 // left
-	case 1:
-		dx = 1 // right
-	case 2:
-		dy = -1 // Up
-	case 3:
-		dy = 1 // down
+	targetX, targetY, found := t.findClosestFire(g)
+	if !found {
+
+		g.Cells[t.Y][t.X] = Truck
+		return
 	}
 
-	newX := t.X + dx
-	newY := t.Y + dy
-
-	if newX >= 0 && newX < GridSize && newY >= 0 && newY < GridSize {
-		t.X, t.Y = newX, newY
+	if t.X < targetX {
+		t.X++
+	} else if t.X > targetX {
+		t.X--
+	}
+	if t.Y < targetY {
+		t.Y++
+	} else if t.Y > targetY {
+		t.Y--
 	}
 
 	g.Cells[t.Y][t.X] = Truck
-
 }
 
-// Put out fire if truck is on a fire cell
+// Instantly extinguish fire if present
 func (t *Firetruck) Extinguish(g *Grid) {
 	if g.Cells[t.Y][t.X] == Fire {
 		g.Cells[t.Y][t.X] = Extinguished
+		g.Intensity[t.Y][t.X] = 0
 	}
 }

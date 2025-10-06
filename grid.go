@@ -17,14 +17,20 @@ const (
 )
 
 type Grid struct {
-	Cells [GridSize][GridSize]Cell
+	Cells     [GridSize][GridSize]Cell
+	Intensity [GridSize][GridSize]int
 }
 
 // Ignite a random fire
 func (g *Grid) IgniteFire() {
 	x := rand.Intn(GridSize)
 	y := rand.Intn(GridSize)
-	g.Cells[y][x] = Fire
+	if g.Cells[y][x] == Fire {
+		g.Intensity[y][x]++ // intensify existing fire
+	} else {
+		g.Cells[y][x] = Fire
+		g.Intensity[y][x] = 1
+	}
 
 }
 
@@ -34,7 +40,11 @@ func (g *Grid) SpreadFire() {
 	for y := 0; y < GridSize; y++ {
 		for x := 0; x < GridSize; x++ {
 			if g.Cells[y][x] == Fire {
-				if rand.Float64() < 0.2 { // "20% chance to spread"
+
+				g.Intensity[y][x]++
+
+				spreadChance := 0.1 + 0.02*float64(g.Intensity[y][x])
+				if rand.Float64() < spreadChance {
 					dx := rand.Intn(3) - 1
 					dy := rand.Intn(3) - 1
 					nx, ny := x+dx, y+dy
@@ -47,6 +57,7 @@ func (g *Grid) SpreadFire() {
 	}
 	for _, f := range newFire {
 		g.Cells[f[1]][f[0]] = Fire
+		g.Intensity[f[1]][f[0]] = 1
 	}
 }
 
@@ -58,7 +69,11 @@ func (g *Grid) Print() {
 			case Empty:
 				fmt.Print(".")
 			case Fire:
-				fmt.Print("F")
+				level := g.Intensity[y][x]
+				if level > 9 {
+					level = 9
+				}
+				fmt.Printf("%d", level)
 			case Extinguished:
 				fmt.Print("E")
 			case Truck:
@@ -68,10 +83,4 @@ func (g *Grid) Print() {
 		fmt.Println()
 	}
 	fmt.Println()
-}
-
-func main() {
-	var g Grid
-	g.IgniteFire()
-	g.Print()
 }
