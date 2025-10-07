@@ -29,6 +29,19 @@ func main() {
 	for step := 0; step < 10; step++ {
 		fmt.Printf("Step %d\n", step)
 
+		for _, t := range trucks {
+			fmt.Println("Truck name:", t.Name())
+
+		}
+
+		for y := 0; y < GridSize; y++ {
+			for x := 0; x < GridSize; x++ {
+				if g.Cells[y][x] == Fire {
+					fmt.Println("Active fire:", fireName(x, y))
+				}
+			}
+		}
+
 		g.SpreadFire()
 
 		for _, t := range trucks {
