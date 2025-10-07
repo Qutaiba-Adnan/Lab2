@@ -8,9 +8,9 @@ import (
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-
 	g := NewGrid()
 
+	// Start with three fires
 	for i := 0; i < 3; i++ {
 		g.IgniteFire()
 	}
@@ -19,9 +19,12 @@ func main() {
 		{X: 5, Y: 5, ID: 1},
 		{X: 15, Y: 10, ID: 2},
 	}
+
 	for _, t := range trucks {
 		t.Place(g)
 	}
+
+	chief := ChiefTruck{ID: 0}
 
 	fmt.Println("Initial grid:")
 	g.Print()
@@ -29,27 +32,37 @@ func main() {
 	for step := 0; step < 10; step++ {
 		fmt.Printf("Step %d\n", step)
 
-		for _, t := range trucks {
-			fmt.Println("Truck name:", t.Name())
-
-		}
-
+		// Find active fires
+		var fires [][2]int
 		for y := 0; y < GridSize; y++ {
 			for x := 0; x < GridSize; x++ {
 				if g.Cells[y][x] == Fire {
-					fmt.Println("Active fire:", fireName(x, y))
+					fires = append(fires, [2]int{x, y})
 				}
 			}
 		}
 
-		g.SpreadFire()
-
-		for _, t := range trucks {
-			t.Move(g)
-			t.Extinguish(g)
+		if len(fires) == 0 {
+			fmt.Println("All fires extinguished.")
+			break
 		}
 
+		// Chief assigns fires
+		assignments := chief.AssignFires(trucks, fires)
+
+		// Trucks act
+		for _, t := range trucks {
+			if target, ok := assignments[t.ID]; ok {
+				fmt.Printf("%s heading toward fire-%d-%d\n", t.Name(), target[0], target[1])
+				t.Move(g)
+				t.Extinguish(g)
+			}
+		}
+
+		// Spread and print
+		g.SpreadFire()
 		g.Print()
-		time.Sleep(500 * time.Millisecond)
+
+		time.Sleep(600 * time.Millisecond)
 	}
 }
