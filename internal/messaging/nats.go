@@ -22,10 +22,10 @@ func Connect() *nats.Conn {
 		nats.MaxReconnects(10),
 	)
 	if err != nil {
-		log.Fatalf("❌ Could not connect to NATS: %v", err)
+		log.Fatalf("Could not connect to NATS: %v", err)
 	}
 
-	log.Printf("✅ Connected to NATS at %s", nc.ConnectedUrl())
+	log.Printf("Connected to NATS at %s", nc.ConnectedUrl())
 	return nc
 }
 
@@ -43,7 +43,7 @@ func SubscribeJSON[T any](nc *nats.Conn, subject string, handler func(T)) (*nats
 	return nc.Subscribe(subject, func(msg *nats.Msg) {
 		var data T
 		if err := json.Unmarshal(msg.Data, &data); err != nil {
-			log.Printf("❌ JSON unmarshal error on %s: %v", subject, err)
+			log.Printf("JSON unmarshal error on %s: %v", subject, err)
 			return
 		}
 		handler(data)
@@ -53,7 +53,7 @@ func SubscribeJSON[T any](nc *nats.Conn, subject string, handler func(T)) (*nats
 // Gracefully close the connection
 func Drain(nc *nats.Conn) {
 	if nc != nil {
-		log.Println("🧹 Draining NATS connection...")
+		log.Println("Draining NATS connection...")
 		nc.Drain()
 		nc.Close()
 	}
