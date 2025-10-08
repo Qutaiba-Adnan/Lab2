@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"math"
 )
 
 type Firetruck struct {
-	X, Y int
-	ID   int
+	X, Y   int
+	ID     int
+	Failed bool // new flag
 }
 
 func (t *Firetruck) Place(g *Grid) {
@@ -15,12 +15,11 @@ func (t *Firetruck) Place(g *Grid) {
 }
 
 func (t *Firetruck) Move(g *Grid) {
-	g.Cells[t.Y][t.X] = Empty // clear previous position
-
-	if g.Cells[t.Y][t.X] == Fire {
-		t.Extinguish(g)
+	if t.Failed {
 		return
 	}
+
+	g.Cells[t.Y][t.X] = Empty
 
 	// Find nearest fire
 	targetX, targetY := -1, -1
@@ -41,10 +40,6 @@ func (t *Firetruck) Move(g *Grid) {
 		return
 	}
 
-	fmt.Printf("Truck %d targeting fire at (%d,%d) from (%d,%d)\n",
-		t.ID, targetX, targetY, t.X, t.Y)
-
-	// Move one step toward fire
 	if t.X < targetX {
 		t.X++
 	} else if t.X > targetX {
@@ -59,8 +54,12 @@ func (t *Firetruck) Move(g *Grid) {
 	g.Cells[t.Y][t.X] = Truck
 }
 
-// Extinguish any nearby fire (within 1-cell radius)
+// Extinguish nearby fires (if not failed)
 func (t *Firetruck) Extinguish(g *Grid) {
+	if t.Failed {
+		return
+	}
+
 	for dy := -1; dy <= 1; dy++ {
 		for dx := -1; dx <= 1; dx++ {
 			nx := t.X + dx
@@ -71,8 +70,7 @@ func (t *Firetruck) Extinguish(g *Grid) {
 					if g.RequestWater(waterCost) {
 						g.Cells[ny][nx] = Extinguished
 						g.Intensity[ny][nx] = 0
-						fmt.Printf("Truck %d extinguished fire at (%d,%d)! Water left: %d\n",
-							t.ID, nx, ny, g.Water)
+						println("Truck", t.ID, "extinguished fire at", nx, ny)
 					}
 				}
 			}

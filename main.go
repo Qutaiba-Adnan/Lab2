@@ -10,7 +10,6 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 	g := NewGrid()
 
-	// Start with three fires
 	for i := 0; i < 3; i++ {
 		g.IgniteFire()
 	}
@@ -18,8 +17,8 @@ func main() {
 	trucks := []*Firetruck{
 		{X: 5, Y: 5, ID: 1},
 		{X: 15, Y: 10, ID: 2},
+		{X: 10, Y: 15, ID: 3},
 	}
-
 	for _, t := range trucks {
 		t.Place(g)
 	}
@@ -30,7 +29,10 @@ func main() {
 	g.Print()
 
 	for step := 0; step < 10; step++ {
-		fmt.Printf("Step %d\n", step)
+		fmt.Printf("\n--- Step %d ---\n", step)
+
+		// Random truck failures
+		chief.CheckFailures(trucks)
 
 		// Find active fires
 		var fires [][2]int
@@ -47,13 +49,15 @@ func main() {
 			break
 		}
 
-		// Chief assigns fires
 		assignments := chief.AssignFires(trucks, fires)
 
 		// Trucks act
 		for _, t := range trucks {
+			if t.Failed {
+				continue
+			}
 			if target, ok := assignments[t.ID]; ok {
-				fmt.Printf("%s heading toward fire-%d-%d\n", t.Name(), target[0], target[1])
+				fmt.Printf("%s moving to fire-%d-%d\n", t.Name(), target[0], target[1])
 				t.Move(g)
 				t.Extinguish(g)
 			}
@@ -63,6 +67,6 @@ func main() {
 		g.SpreadFire()
 		g.Print()
 
-		time.Sleep(600 * time.Millisecond)
+		time.Sleep(700 * time.Millisecond)
 	}
 }
