@@ -17,6 +17,8 @@ type Firetruck struct {
     requestedWater  bool   // true after sending WaterRequest
     requestTimestamp int64
 	deferredRequests []WaterRequest // requests this truck denies
+	approvals map[int]bool 
+	waitCounter int
 }
 
 func (t *Firetruck) incrementClock() int {
@@ -24,6 +26,8 @@ func (t *Firetruck) incrementClock() int {
 	v := t.Clock
 	return v
 }
+
+var logChannel = make(chan string, 100) // store logs here
 
 func (t *Firetruck) updateClock(received int) int {
     if received > t.Clock { t.Clock = received }
@@ -64,9 +68,9 @@ func (t *Firetruck) OnWaterRequest(req WaterRequest) {
     })
 
     if grant {
-        fmt.Printf("Truck %d granted water to truck %d at %d\n", t.ID, req.FromID, t.Clock)
+        logChannel <- fmt.Sprintf("Truck %d granted water to truck %d at Ts:%d\n", t.ID, req.FromID, t.Clock)
     } else {
-        fmt.Printf("Truck %d denied water to truck %d at %d\n", t.ID, req.FromID, t.Clock)
+        logChannel <- fmt.Sprintf("Truck %d denied water to truck %d at Ts:%d\n", t.ID, req.FromID, t.Clock)
     }
 }
 
@@ -77,21 +81,19 @@ func (t *Firetruck) OnWaterReply(reply WaterReply) {
 
     t.updateClock(int(reply.Timestamp))
 
-	approvals := 0
     if reply.Granted {
-        approvals++
+        t.approvals[reply.FromID] = true
+        logChannel <- fmt.Sprintf("Truck %d received approval from Truck %d at Ts:%d\n", t.ID, reply.FromID, t.Clock)
     } else {
-        
+        logChannel <- fmt.Sprintf("Truck %d was denied by Truck %d at Ts:%d\n", t.ID, reply.FromID, t.Clock)
     }
 
-	if approvals == totalTrucks -1 {
-		t.requestedWater = false
-		t.usingWater = true
-    	fmt.Printf("Truck %d is accessing water\n", t.ID)
-	} else {
-
-	}
-    
+    // check if we have all approvals
+    if len(t.approvals) == totalTrucks-1 {
+        t.usingWater = true
+        t.requestedWater = false
+        logChannel <- fmt.Sprintf("Truck %d has access to water at Ts:%d\n", t.ID, t.Clock)
+    }
 }
 
 func (t *Firetruck) OnWaterRelease(msg WaterRelease) {
@@ -108,7 +110,7 @@ func (t *Firetruck) OnWaterRelease(msg WaterRelease) {
             Timestamp: int64(t.Clock),
             Granted:   true,
         })
-        fmt.Printf("Truck %d granted water to truck %d at %d\n", t.ID, req.FromID, t.Clock)
+        logChannel <- fmt.Sprintf("Truck %d granted water to truck %d at Ts:%d\n", t.ID, req.FromID, t.Clock)
     }
 	t.deferredRequests = nil
 }
@@ -151,6 +153,13 @@ func (t *Firetruck) Move(g *Grid) {
 		return
 	}
 
+	if math.Abs(float64(t.X - targetX)) <= 1 && math.Abs(float64(t.Y - targetY)) <= 1 {
+		// if the truck is right next to the fire, extinguish 
+		g.Cells[t.Y][t.X] = Truck
+		t.Extinguish(g, targetX, targetY)
+		return
+	}
+
 	if t.X < targetX {
 		t.X++
 	} else if t.X > targetX {
@@ -164,43 +173,52 @@ func (t *Firetruck) Move(g *Grid) {
 
 	g.Cells[t.Y][t.X] = Truck
 
-	fmt.Printf("Truck %d moved. Ts: %d\n", t.ID, t.Clock)
+	logChannel <- fmt.Sprintf("Truck %d moved at Ts:%d\n", t.ID, t.Clock)
 }
 
-func (t *Firetruck) Extinguish(g *Grid) {
-    if g.Cells[t.Y][t.X] == Fire {
+func (t *Firetruck) Extinguish(g *Grid, fireX int, fireY int) {
+	if !t.requestedWater && !t.usingWater {
+		logChannel <- fmt.Sprintf("Truck %d encountered a fire at Ts:%d\n", t.ID, t.Clock)
+		t.requestedWater = true
+		t.requestTimestamp = int64(t.incrementClock())
 
-        if !t.requestedWater && !t.usingWater {
-            t.requestedWater = true
-            t.requestTimestamp = int64(t.incrementClock())
-
-            req := WaterRequest{
-                FromID:    t.ID,
-                Timestamp: t.requestTimestamp,
-            }
-            messaging.PublishJSON(t.nc, "water.request", req)
-            fmt.Printf("[Truck %d sent WaterRequest at Ts:%d\n", t.ID, t.Clock)
-            return 
-        }
-
-		if t.requestedWater && !t.usingWater {
-			// waiting for approvals
-			return
+		req := WaterRequest{
+			FromID:    t.ID,
+			Timestamp: t.requestTimestamp,
 		}
+		messaging.PublishJSON(t.nc, "water.request", req)
+		logChannel <- fmt.Sprintf("Truck %d sent WaterRequest at Ts:%d\n", t.ID, t.Clock)
+		return 
+	}
 
-        t.incrementClock()
-        g.Cells[t.Y][t.X] = Extinguished
-        g.Intensity[t.Y][t.X] = 0
-        fmt.Printf("[Truck %d Extinguished fire at Ts: %d\n", t.ID, t.Clock)
+	if t.requestedWater && !t.usingWater {
+		t.waitCounter++
+		if t.waitCounter >= totalTrucks - 1 {
+			t.waitCounter = 0
+			t.requestTimestamp = int64(t.incrementClock())
+			messaging.PublishJSON(t.nc, "water.request", WaterRequest{
+				FromID:    t.ID,
+				Timestamp: t.requestTimestamp,
+			})
+			logChannel <- fmt.Sprintf("Truck %d re-sent WaterRequest at Ts:%d\n", t.ID, t.Clock)
+		}
+		return
+	}
 
-        t.usingWater = false
-        t.requestedWater = false
-        t.incrementClock()
+	t.incrementClock()
+	g.Cells[fireY][fireX] = Extinguished
+	g.Intensity[fireY][fireX] = 0
+	logChannel <- fmt.Sprintf("Truck %d Extinguished fire at Ts:%d\n", t.ID, t.Clock)
 
-        messaging.PublishJSON(t.nc, "water.release", WaterRelease{
-            FromID:    t.ID,
-            Timestamp: int64(t.Clock),
-        })
-        fmt.Printf("[Truck %d released water at Ts:%d\n", t.ID, t.Clock)
-    }
+	t.usingWater = false
+	t.requestedWater = false
+	t.approvals = make(map[int]bool)
+	t.incrementClock()
+
+	messaging.PublishJSON(t.nc, "water.release", WaterRelease{
+		FromID:    t.ID,
+		Timestamp: int64(t.Clock),
+	})
+	logChannel <- fmt.Sprintf("Truck %d released water at Ts:%d\n", t.ID, t.Clock)
+    
 }
