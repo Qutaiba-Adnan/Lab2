@@ -8,9 +8,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// ----------------------------------------------------
-// Firetruck struct and state
-// ----------------------------------------------------
+// Firetruck struct defines each firefighting agent in the grid
 type Firetruck struct {
 	X, Y             int
 	ID               int
@@ -26,7 +24,7 @@ type Firetruck struct {
 }
 
 // ----------------------------------------------------
-// Clock management
+// Logical Clock Management
 // ----------------------------------------------------
 func (t *Firetruck) incrementClock() int {
 	t.Clock++
@@ -42,7 +40,7 @@ func (t *Firetruck) updateClock(received int) int {
 }
 
 // ----------------------------------------------------
-// Message Handlers
+// NATS Message Handlers
 // ----------------------------------------------------
 func (t *Firetruck) OnWaterRequest(req WaterRequest) {
 	if req.FromID == t.ID {
@@ -117,7 +115,7 @@ func (t *Firetruck) OnWaterRelease(msg WaterRelease) {
 }
 
 // ----------------------------------------------------
-// Movement and Extinguish
+// Movement and Firefighting Logic
 // ----------------------------------------------------
 func (t *Firetruck) Place(g *Grid) {
 	g.Cells[t.Y][t.X] = Truck
@@ -128,7 +126,8 @@ func (t *Firetruck) findClosestFire(g *Grid) (int, int, bool) {
 	minDist := math.MaxFloat64
 	for y := 0; y < GridSize; y++ {
 		for x := 0; x < GridSize; x++ {
-			if g.Cells[y][x] == Fire {
+			// Fire is represented by intensity > 0
+			if g.Intensity[y][x] > 0 {
 				dist := math.Sqrt(math.Pow(float64(t.X-x), 2) + math.Pow(float64(t.Y-y), 2))
 				if dist < minDist {
 					minDist = dist
@@ -160,6 +159,7 @@ func (t *Firetruck) Move(g *Grid) {
 		return
 	}
 
+	// Move one step toward the closest fire
 	if t.X < targetX {
 		t.X++
 	} else if t.X > targetX {
@@ -176,13 +176,14 @@ func (t *Firetruck) Move(g *Grid) {
 }
 
 // ----------------------------------------------------
-// Extinguish logic with water coordination
+// Fire Extinguishing and Coordination
 // ----------------------------------------------------
 func (t *Firetruck) Extinguish(g *Grid, fireX int, fireY int) {
 	if t.Failed {
 		return
 	}
 
+	// If no water and not using it, request access
 	if !t.requestedWater && !t.usingWater {
 		t.requestedWater = true
 		t.requestTimestamp = int64(t.incrementClock())
@@ -192,6 +193,7 @@ func (t *Firetruck) Extinguish(g *Grid, fireX int, fireY int) {
 		return
 	}
 
+	// If waiting for access, resend request occasionally
 	if t.requestedWater && !t.usingWater {
 		t.waitCounter++
 		if t.waitCounter >= totalTrucks-1 {
@@ -212,6 +214,7 @@ func (t *Firetruck) Extinguish(g *Grid, fireX int, fireY int) {
 	g.Intensity[fireY][fireX] = 0
 	logChannel <- fmt.Sprintf("Truck %d extinguished fire at (%d,%d) Ts:%d", t.ID, fireX, fireY, t.Clock)
 
+	// Release water access
 	t.usingWater = false
 	t.requestedWater = false
 	t.approvals = make(map[int]bool)
