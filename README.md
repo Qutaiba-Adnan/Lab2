@@ -9,6 +9,42 @@ This project implements a distributed firefighting simulation in **Go**, using *
 
 ---
 
+## Technologies Used
+- Programming Language: **Go 1.21+**  
+- Messaging System: **NATS**  
+- Coordination: **Lamport Logical Clocks**
+- 
+---
+##  Prerequisites
+
+- **Go 1.21+**
+- **Docker** (for running NATS locally)
+
+## Installation and Setup
+You can set up and run the simulation using the following commands step-by-step:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Qutaiba-Adnan/Lab2.git
+cd Lab2
+
+# 2. Install Go dependencies
+go mod tidy
+
+# 3. Start the NATS server (using Docker)
+docker run --name nats -p 4222:4222 -p 8222:8222 -d nats:latest
+
+# 4. Verify that NATS is running
+docker ps | grep nats
+
+# 5. Run the simulation
+export NATS_URL="nats://localhost:4222"
+go run .
+
+```
+
+---
+
 ## System Architecture
 ### Components
 | Component | Description |
@@ -21,12 +57,37 @@ This project implements a distributed firefighting simulation in **Go**, using *
 | `nats.go` | Manages NATS connectivity, publishing, and subscription utilities. |
 | `main.go` | Entry point; initializes the grid, connects to NATS, and runs the simulation loop. |
 
----
+### Architecture Diagram
 
-## Technologies Used
-- Programming Language: **Go 1.21+**  
-- Messaging System: **NATS**  
-- Coordination: **Lamport Logical Clocks**  
+```mermaid
+flowchart TB
+  %% ====== Top Layer ======
+  NATS["NATS Bus<br/>Publish/Subscribe Broker"]
+
+  %% ====== Middle Layer ======
+  subgraph Firetruck_Agents ["Firetruck Agent Components"]
+    Truck1["Truck 1<br/>Autonomous Agent"]
+    Truck2["Truck 2<br/>Autonomous Agent"]
+    Truck3["Truck 3<br/>Autonomous Agent"]
+  end
+
+  %% ====== Bottom Layer ======
+  Grid["Shared Grid<br/>(Fire Simulation)"]
+
+  %% ====== Connections ======
+  NATS <--> Truck1
+  NATS <--> Truck2
+  NATS <--> Truck3
+  Truck1 <--> Grid
+  Truck2 <--> Grid
+  Truck3 <--> Grid
+
+  %% ====== Unified Style ======
+  classDef default fill:#dbeafe,stroke:#2563eb,color:#000,rx:8,ry:8,stroke-width:1;
+  classDef title fill:#bfdbfe,stroke:#1e3a8a,color:#000,font-weight:bold;
+  class NATS title
+
+```
 
 ---
 
@@ -55,31 +116,5 @@ This project implements a distributed firefighting simulation in **Go**, using *
 - Failure simulation demonstrates robustness in distributed coordination.  
 
 ---
-
-##  Prerequisites
-
-- **Go 1.21+**
-- **Docker** (for running NATS locally)
-
-## Installation and Setup
-You can set up and run the simulation using the following commands step-by-step:
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/Qutaiba-Adnan/Lab2.git
-cd Lab2
-
-# 2. Install Go dependencies
-go mod tidy
-
-# 3. Start the NATS server (using Docker)
-docker run --name nats -p 4222:4222 -p 8222:8222 -d nats:latest
-
-# 4. Verify that NATS is running
-docker ps | grep nats
-
-# 5. Run the simulation
-export NATS_URL="nats://localhost:4222"
-go run .
 
 
