@@ -63,7 +63,7 @@ func main() {
 	fmt.Println("Initial Grid:")
 	g.Print()
 
-	for step := 0; step < 10; step++ {
+	for step := 0; step < 30; step++ {
 		fmt.Printf("\n=== Step %d ===\n", step)
 
 		// Simulate truck failure (random)
