@@ -28,7 +28,7 @@ func main() {
 	fmt.Println("Initial grid:")
 	g.Print()
 
-	for step := 0; step < 10; step++ {
+	for step := 0; step < 30; step++ {
 		fmt.Printf("\n--- Step %d ---\n", step)
 
 		// Random truck failures
