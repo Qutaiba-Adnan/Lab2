@@ -5,7 +5,8 @@ Authors: Qutaiba Adnan, Bouali Boujerad, Vijaykrishnan Gopalakrishnan
 ---
 
 ## Overview
-This project implements a distributed firefighting simulation in **Go**, using **NATS** as a message broker for asynchronous communication and coordination. Multiple autonomous firetrucks cooperate over a shared grid to extinguish fires without any central controller. The system demonstrates decentralized coordination using **publish–subscribe messaging**, **Lamport logical clocks**, and a **mutual exclusion mechanism** to ensure fair access to a shared resource (water). This implementation fulfills Tasks 0–3 of the official *Lab 2 – Fighting Fire* assignment.
+This project implements a distributed firefighting simulation in **Go**, using **NATS** as a message broker for asynchronous communication and coordination. Multiple autonomous firetrucks cooperate over a shared grid to extinguish fires without any central controller. Each firetruck operates as an **independent distributed process**, capable of making local decisions, exchanging messages using **publish–subscribe messaging**, and synchronizing access to shared resources (water) using **Lamport logical clocks**. Through this mechanism, the system ensures **mutual exclusion**, **fairness**, and **causal ordering** of events in a fully decentralized environment. This implementation fulfills Tasks 0–3 of the official 
+*Lab 2 – Fighting Fire* assignment.
 
 ---
 
@@ -13,7 +14,7 @@ This project implements a distributed firefighting simulation in **Go**, using *
 - Programming Language: **Go 1.21+**  
 - Messaging System: **NATS**  
 - Coordination: **Lamport Logical Clocks**
-- 
+  
 ---
 ##  Prerequisites
 
@@ -95,7 +96,7 @@ flowchart TB
 ### Task 0 – Simulation Environment
 - A 20×20 grid represents the environment.  
 - Fires ignite and spread randomly.  
-- Firetrucks are placed on the grid and move to extinguish fires.  
+- Firetrucks are placed on the grid and move one cell each simulation step to extinguish fires.  
 - Each simulation step prints the updated grid and actions.  
 
 ### Task 1 – Communication Backbone
@@ -111,7 +112,7 @@ flowchart TB
 
 ### Task 3 – Distributed Strategy and Naming
 - Trucks make decisions independently without a central controller.  
-- Each truck is assigned a unique name such as `truck-1`, `truck-2`, etc.  
+- Each truck is assigned a unique name such as `truck-1`, `truck-2`, etc. (flat-naming scheme)  
 - Coordination relies entirely on decentralized message exchange.  
 - Failure simulation demonstrates robustness in distributed coordination.  
 
